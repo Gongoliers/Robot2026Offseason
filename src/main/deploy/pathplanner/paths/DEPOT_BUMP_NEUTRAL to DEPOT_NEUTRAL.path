@@ -1,0 +1,98 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 3.517271529181155,
+        "y": 5.57665416210373
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 4.544430506005468,
+        "y": 5.666867638465411
+      },
+      "isLocked": false,
+      "linkedName": "DEPOT_BUMP_NEUTRAL"
+    },
+    {
+      "anchor": {
+        "x": 5.630709683633264,
+        "y": 5.7325222584277915
+      },
+      "prevControl": {
+        "x": 5.321559507774364,
+        "y": 5.525269795258005
+      },
+      "nextControl": {
+        "x": 6.382036235125768,
+        "y": 6.236207168226298
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 7.412050184128601,
+        "y": 6.264635706995263
+      },
+      "prevControl": {
+        "x": 7.047254141217711,
+        "y": 6.508552832631018
+      },
+      "nextControl": {
+        "x": 7.999441509622181,
+        "y": 5.87188253293529
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 7.814932981281611,
+        "y": 4.50760395865909
+      },
+      "prevControl": {
+        "x": 7.8622626352134475,
+        "y": 5.075193496526379
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": "DEPOT_NEUTRAL"
+    }
+  ],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 1.4850850147146848,
+      "rotationDegrees": -45.0
+    }
+  ],
+  "constraintZones": [],
+  "pointTowardsZones": [],
+  "eventMarkers": [
+    {
+      "name": "Intake",
+      "waypointRelativePos": 0.699324103677349,
+      "endWaypointRelativePos": null,
+      "command": null
+    }
+  ],
+  "globalConstraints": {
+    "maxVelocity": 3.0,
+    "maxAcceleration": 3.0,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": -88.54916701074035
+  },
+  "reversed": false,
+  "folder": "DEPOT",
+  "idealStartingState": {
+    "velocity": 0,
+    "rotation": 0.0
+  },
+  "useDefaultConstraints": true
+}

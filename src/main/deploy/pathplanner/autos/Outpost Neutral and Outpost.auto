@@ -1,0 +1,55 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "named",
+          "data": {
+            "name": "Score3"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "OUTPOST_BUMP_NEUTRAL to OUTPOST_NEUTRAL"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "OUTPOST_NEUTRAL to OUTPOST_BUMP_ZONE"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Score3"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "OUTPOST_BUMP_ZONE to OUTPOST"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "OUTPOST to OUTPOST_SAFE"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Score"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Neutral",
+  "choreoAuto": false
+}

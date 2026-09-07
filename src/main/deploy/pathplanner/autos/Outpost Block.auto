@@ -1,0 +1,25 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "named",
+          "data": {
+            "name": "Score3"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "OUTPOST_BUMP_ZONE to BLOCK"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Block",
+  "choreoAuto": false
+}

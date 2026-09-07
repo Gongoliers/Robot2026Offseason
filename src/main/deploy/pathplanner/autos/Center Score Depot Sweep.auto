@@ -1,0 +1,55 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Center Back Up"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Score2"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Center Score to Depot Sweep"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Intake"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Left Depot Sweep"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Leave Depot"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Score"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": "Center",
+  "choreoAuto": false
+}
