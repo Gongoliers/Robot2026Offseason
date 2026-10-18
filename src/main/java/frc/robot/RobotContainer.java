@@ -165,6 +165,7 @@ public class RobotContainer {
     operatorController.y().onTrue(Commands.runOnce(() -> turret.setExtraShotVelocity(RotationsPerSecond.of(0))));
 
     operatorController.leftBumper().onTrue(Commands.runOnce(() -> azimuth.resetPosition(Rotations.of(0.25))));
+    //operatorController.leftBumper().onTrue(Commands.runOnce(() -> drive.resetPose()));
   }
 
   public Command getAutonomousCommand() {

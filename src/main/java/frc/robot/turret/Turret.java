@@ -10,6 +10,7 @@ import java.util.Optional;
 import javax.lang.model.util.Elements.Origin;
 
 import org.photonvision.PhotonCamera;
+import org.photonvision.PhotonUtils;
 import org.photonvision.estimation.TargetModel;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.SimCameraProperties;
@@ -34,11 +35,14 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N2;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.MutAngularVelocity;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -46,6 +50,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.lib.MultithreadedSubsystem;
 import frc.lib.PosePublisher;
+import frc.robot.Robot;
 import frc.robot.RobotConstants;
 import frc.robot.TuningConstants;
 import frc.robot.azimuth.Azimuth;
@@ -86,7 +91,7 @@ public class Turret extends MultithreadedSubsystem {
   private final MutAngularVelocity extraShotVelocity = RotationsPerSecond.mutable(0.0); // TODO: I HATE THIS
 
   // vision sim
-  //VisionSystemSim visionSim = new VisionSystemSim("main");
+  VisionSystemSim visionSim = new VisionSystemSim("main");
 
   // The PhotonCamera used in the real robot code.
   PhotonCamera camera = new PhotonCamera("PhotonVisionCamera");
@@ -95,14 +100,22 @@ public class Turret extends MultithreadedSubsystem {
   PhotonCameraSim cameraSim;
 
   // (Robot pose is considered the center of rotation at the floor level, or Z = 0)
-  Translation3d robotToCameraTrl = new Translation3d(Inches.of(5.584), Inches.of(2.145), Inches.of(17.5));
+  public static Translation3d robotToCameraTrl = new Translation3d(Inches.of(5.584), Inches.of(2.145), Inches.of(17.5));
   // and pitched 15 degrees up.
-  Rotation3d robotToCameraRot = new Rotation3d(0, Math.toRadians(-15), 0);
-  Transform3d robotToCamera = new Transform3d(robotToCameraTrl, robotToCameraRot);
+  public static Rotation3d robotToCameraRot = new Rotation3d(0, Math.toRadians(-15), 0);
+  public static Transform3d robotToCamera = new Transform3d(robotToCameraTrl, robotToCameraRot);
 
   // The layout of AprilTags which we want to add to the vision system
   AprilTagFieldLayout tagLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
-  
+
+  // Used for vision-only targeting
+  double tx;
+  double distance;
+  int bestFiducialID = 10;
+  boolean hasFiducial = false;
+  boolean targetVisible = false;
+  Angle targetYaw = Degrees.zero();
+  Distance targetRange = Meters.zero();
 
   /**
    * Gets turret subsystem instance
@@ -130,7 +143,7 @@ public class Turret extends MultithreadedSubsystem {
     /* 
     //camera sim setup
     SimCameraProperties cameraProp = new SimCameraProperties();
-    // A 640 x 480 camera with a 100 degree diagonal FOV.
+    // A 640 x 480 camera with a 100 degree diagonal FOV.322
     cameraProp.setCalibration(640, 480, Rotation2d.fromDegrees(99.3));
     // Approximate detection noise with average and standard deviation error in pixels.
     cameraProp.setCalibError(0.25, 0.08);
@@ -189,38 +202,86 @@ public class Turret extends MultithreadedSubsystem {
         return new Pose3d().plus(robotInField);
     }
 
+    public Pose2d get2dRobotPose(Pose3d visionPose){
+
+      Pose2d newPose2d = visionPose.toPose2d();
+      return newPose2d;
+    }
+
+    public void setBestAllianceFiducial(Alliance alliance){
+      if (alliance == Alliance.Red){
+        bestFiducialID = 10;
+      } else if (alliance == Alliance.Blue){
+        bestFiducialID = 26;
+      }
+    }
 
 
   @Override
   public void periodic() {
+    if (Robot.isSimulation()){ 
     Pose2d robot = Drive.getInstance().getPose();
     PosePublisher.publish("Turret (Local)", RobotConstants.localTurretPose(azimuth.localPosition()));
     PosePublisher.publish("Turret (Global)", RobotConstants.globalTurretPose(robot, azimuth.localPosition()));
+    
+    visionSim.update(drive.getPose());
+    visionSim.adjustCamera(cameraSim, robotToCamera);
 
-
+    }
 
 
     //TODO: Maybe try moving this to fastPeriodic() if it isn't too much of a performance hit
-    turretPose = RobotConstants.globalTurretPose(Drive.getInstance().getPose(), azimuth.getValues().position).toPose2d();
     Translation2d translationToHub = TurretTargetsSupplier.projectedAllianceHub().minus(turretPose.getTranslation());
     SmartDashboard.putNumber("Turret distance (meters)", translationToHub.getNorm());
 
     PosePublisher.publish("Estimated turret pose", turretPose);
     
-    //visionSim.update(drive.getPose());
     Rotation3d turretRotation = new Rotation3d(Radians.zero(), Radians.zero(), azimuth.getValues().position);
     robotToCamera = new Transform3d(
       robotToCameraTrl.rotateBy(turretRotation),
       robotToCameraRot.rotateBy(turretRotation)
       );
 
-    //visionSim.adjustCamera(cameraSim, robotToCamera);
     var multiTagRobotPoses = getOriginToCameraTransforms().stream().map((t) -> getRobotPose(t, robotToCamera.inverse())).toArray(Pose3d[]::new);
     PosePublisher.publish("RobotPose", multiTagRobotPoses);
 
     for(Pose3d robotPose:multiTagRobotPoses){
       drive.addVisionMeasurement(robotPose.toPose2d(), Timer.getFPGATimestamp(), VecBuilder.fill(1.5, 1.5, 9999));
     }
+
+    if (Robot.isReal()){
+        // Read in relevant data from the Camera
+
+        DriverStation.getAlliance().ifPresent(this::setBestAllianceFiducial);
+        var results = camera.getAllUnreadResults();
+        if (!results.isEmpty()) {
+            // Camera processed a new frame since last
+            // Get the last one in the list.
+            var result = results.get(results.size() - 1);
+            if (result.hasTargets()) {
+                // At least one AprilTag was seen by the camera
+                for (var target : result.getTargets()) {
+                    if (target.getFiducialId() == bestFiducialID) {
+                      // Found Tag 7, record its information
+                      targetYaw = Degrees.of(target.getYaw());
+                      targetVisible = true;
+
+                      targetRange =
+                                Meters.of(PhotonUtils.calculateDistanceToTargetMeters(
+                                        0.735102, // Measured with a tape measure, or in CAD.
+                                        1.30048, // From 2024 game manual for ID 7
+                                        Units.degreesToRadians(-15.0), // Measured with a protractor, or in CAD.
+                                        Units.degreesToRadians(target.getPitch())));
+
+                    }
+                }
+            }
+        }
+    }
+    
+
+
+
   }
 
   @Override
@@ -234,16 +295,16 @@ public class Turret extends MultithreadedSubsystem {
       case ALLOW_EXTERNAL_CONTROL:
         break;
       case ALLOW_EXTERNAL_CONTROL_FACING_HUB:
-        faceHub(turretPose);
+        faceHub(targetYaw);
         break;
       case FACE_HUB:
-        faceHub(turretPose);
+        faceHub(targetYaw);
         hood.setSetpoint(hood.getMinPosition());
         shooter.setSetpoint(RotationsPerSecond.of(0.0));
         break;
       case TARGET_HUB:
-        faceHub(turretPose);
-        targetHub(turretPose);
+        faceHub(targetYaw);
+        targetHub(targetRange);
         break;
       case PASS:
         faceAllianceWall(turretPose);
@@ -269,8 +330,8 @@ public class Turret extends MultithreadedSubsystem {
         break;
       case TARGET_HUB_FROM_POSE:
         Pose2d manualTurretPose = RobotConstants.globalTurretPose(manualRobotPose, azimuth.getValues().position).toPose2d();
-        faceHub(manualTurretPose);
-        targetHub(manualTurretPose);
+        faceHub(targetYaw);
+        targetHub(targetRange);
         break;
     }
   }
@@ -303,13 +364,21 @@ public class Turret extends MultithreadedSubsystem {
    * 
    * @param turretPose estimated turret pose
    */
-  private void faceHub(Pose2d turretPose) {
+  private void faceHub(Angle yaw) {
+    azimuth.setSetpoint(azimuth.getValues().position.plus(yaw));
+
+
+
+
+
+    /*  Old Stuff for not at Robots on Fire
     Translation2d translationToHub = TurretTargetsSupplier.projectedAllianceHub().minus(turretPose.getTranslation());
     Rotation2d rotationError = translationToHub.getAngle().minus(turretPose.getRotation());
 
     SmartDashboard.putNumber("Turret distance (meters)", translationToHub.getNorm()); // getNorm does return distance in meters it isn't documented but translations are in meters
 
     azimuth.setSetpoint(azimuth.getValues().position.plus(rotationError.getMeasure()));
+    */
   }
 
   private void faceAllianceWall(Pose2d turretPose) {
@@ -332,12 +401,9 @@ public class Turret extends MultithreadedSubsystem {
     }
   }
 
-  private void targetHub(Pose2d turretPose) {
-    Translation2d translationToHub = TurretTargetsSupplier.projectedAllianceHub().minus(turretPose.getTranslation());
-    Distance turretDistance = Meters.of(translationToHub.getNorm());
-
-    Angle hoodSetpoint = TurretTargeter.targetHubHood(turretDistance);
-    AngularVelocity shooterSetpoint = TurretTargeter.targetHubShooter(turretDistance);
+  private void targetHub(Distance targetRange) {
+    Angle hoodSetpoint = TurretTargeter.targetHubHood(targetRange);
+    AngularVelocity shooterSetpoint = TurretTargeter.targetHubShooter(targetRange);
 
     hood.setSetpoint(hoodSetpoint);
     shooter.setSetpoint(shooterSetpoint.plus(extraShotVelocity)); // TODO: I HATE THIS
